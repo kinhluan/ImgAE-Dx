@@ -1,29 +1,39 @@
-# Đề Cương Phương Pháp Luận Nghiên Cứu Dự Án
+# Đề cương phương pháp luận nghiên cứu dự án
 
 **Chủ đề:** Đánh giá so sánh hiệu quả của các kiến trúc Autoencoder trong bài toán phát hiện bất thường không giám sát trên ảnh X-quang y khoa.
 **Cập nhật lần cuối:** 10/08/2025
 
 ---
 
-## Tóm Tắt (Abstract)
+## Tóm tắt (abstract)
 
 Nghiên cứu này đề xuất một phương pháp luận để đánh giá và so sánh hiệu quả của hai kiến trúc mạng nơ-ron tích chập dựa trên autoencoder cho bài toán phát hiện bất thường không giám sát. Một kiến trúc U-Net tiêu chuẩn được sử dụng làm mô hình cơ sở (baseline) để đối chứng với một kiến trúc thử nghiệm, Reversed Autoencoder (RA), được lấy cảm hứng từ các nghiên cứu gần đây. Thử nghiệm sẽ được tiến hành trên một tập con của bộ dữ liệu NIH Chest X-ray. Hiệu suất của hai mô hình sẽ được đánh giá dựa trên chỉ số Diện tích dưới đường cong ROC (AUC) và phân tích định tính bản đồ lỗi tái tạo. Toàn bộ quy trình được đóng gói trong một Jupyter Notebook có thể tái lập trên Google Colab, tích hợp cơ chế checkpointing để xử lý các phiên làm việc dài.
 
 ---
 
-## 1. Giới Thiệu & Phát Biểu Vấn Đề (Introduction & Problem Statement)
+## 1. Giới thiệu & phát biểu vấn đề (introduction & problem statement)
 
 Phát hiện bất thường trong ảnh y khoa là một nhiệm vụ quan trọng nhưng đầy thách thức, thường bị giới hạn bởi sự khan hiếm của dữ liệu được gán nhãn chi tiết. Các phương pháp học không giám sát, đặc biệt là các mô hình dựa trên autoencoder, mang lại một hướng tiếp cận tiềm năng bằng cách chỉ học từ dữ liệu "bình thường". Tuy nhiên, việc lựa chọn kiến trúc autoencoder phù hợp có ảnh hưởng lớn đến hiệu suất. Nghiên cứu này giải quyết vấn đề đó bằng cách so sánh một kiến trúc tiêu chuẩn (U-Net) với một kiến trúc mới nổi (RA) trong một bối cảnh có kiểm soát.
 
 ---
 
-## 2. Câu Hỏi Nghiên Cứu & Giả Thuyết (Research Questions & Hypotheses)
+## 2. Câu hỏi nghiên cứu & giả thuyết (research questions & hypotheses)
 
-- **RQ1:** Kiến trúc U-Net, với các kết nối tắt, có khả năng thiết lập một baseline hiệu quả (AUC > 0.80) cho việc phân loại ảnh X-quang bình thường và bất thường dựa trên lỗi tái tạo không?
-- **RQ2:** Kiến trúc Reversed Autoencoder, được thiết kế để tái tạo ảnh "giả lành tính", có cho thấy hiệu suất vượt trội hơn (về mặt AUC và/hoặc chất lượng bản đồ lỗi) so với kiến trúc U-Net tiêu chuẩn không?
+- **RQ1: U-Net architecture and anomaly detection baseline**
+  - Kiến trúc U-Net, với các kết nối tắt, có khả năng thiết lập một baseline hiệu quả (AUC > 0.80) cho việc phân loại ảnh X-quang bình thường và bất thường dựa trên lỗi tái tạo không?
+  - Can the U-Net architecture, leveraging its **skip connections**, establish an effective baseline (AUC > 0.80) for classifying normal versus abnormal X-ray images based on r**econstruction error**?
 
-- **H1 (Giả thuyết 1):** Mô hình U-Net sẽ đạt được hiệu suất baseline tốt, có khả năng phân biệt rõ ràng giữa hai lớp dữ liệu.
-- **H2 (Giả thuyết 2):** Mô hình RA sẽ tạo ra các bản đồ lỗi có tính khu trú cao hơn và có thể đạt được chỉ số AUC cao hơn U-Net do cơ chế tái tạo chuyên biệt của nó.
+- **RQ2: Reversed Autoencoder vs U-Net performance**
+  - Kiến trúc Reversed Autoencoder, được thiết kế để tái tạo ảnh "giả lành tính", có cho thấy hiệu suất vượt trội hơn (về mặt AUC và (hoặc) chất lượng bản đồ lỗi) so với kiến trúc U-Net tiêu chuẩn không?
+  - Does the **Reversed Autoencoder (RA)** architecture, specifically designed to reconstruct images into a "**pseudo-benign**" state, demonstrate superior performance (in terms of AUC and/or the quality of the **error map**) compared to the standard U-Net architecture?
+
+- **H1: U-Net's effectiveness as a baseline**
+  - Mô hình U-Net sẽ đạt được hiệu suất baseline tốt, có khả năng phân biệt rõ ràng giữa hai lớp dữ liệu.
+  - The U-Net model will achieve good baseline performance, demonstrating a clear discriminative ability between the two data classes.
+
+- **H2: Superiority of the reversed autoencoder**
+  - Mô hình RA sẽ “tạo ra các bản đồ lỗi có tính khu trú” cao hơn và có thể đạt được chỉ số AUC (**Area Under the Curve**) cao hơn U-Net do cơ chế tái tạo chuyên biệt của nó.
+  - The RA model will produce **more localized error maps** and achieve a higher AUC than the U-Net due to its specialized reconstruction mechanism, which focuses on **anomaly suppression**.
 
 ---
 

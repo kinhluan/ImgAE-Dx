@@ -1,53 +1,107 @@
-# ImgAE-Dx Streaming Architecture
+# ImgAE-Dx Poetry Architecture
 
-## Cloud-Native Kaggle Streaming System
+## Modern Python Package Structure with Poetry
 
-### 🏗️ Core Architecture
+### 🏗️ Core Architecture (Updated for Poetry)
 
 ```
-src/
-├── imgae_dx/
+imgae-dx/                        # Poetry project root
+├── pyproject.toml              # Poetry configuration
+├── README.md                   # Project documentation
+├── CHANGELOG.md                # Version history
+│
+├── src/
+│   └── imgae_dx/               # Main package (importable)
+│       ├── __init__.py         # Package initialization
+│       ├── cli/                # Command-line interface
+│       │   ├── __init__.py
+│       │   ├── train.py        # Training commands
+│       │   ├── evaluate.py     # Evaluation commands
+│       │   ├── config.py       # Config management commands
+│       │   └── notebook.py     # Notebook utilities
+│       ├── streaming/          # Cloud-native data streaming
+│       │   ├── __init__.py
+│       │   ├── kaggle_client.py      # Kaggle API wrapper
+│       │   ├── stream_loader.py      # Streaming data loader
+│       │   └── memory_manager.py     # Smart caching system
+│       ├── data/               # Data processing pipeline
+│       │   ├── __init__.py
+│       │   ├── streaming_dataset.py  # PyTorch Dataset with streaming
+│       │   ├── transforms.py         # Image preprocessing
+│       │   └── batch_processor.py    # Memory-efficient batching
+│       ├── models/             # Model architectures
+│       │   ├── __init__.py
+│       │   ├── base.py         # Base model interface
+│       │   ├── unet.py         # U-Net architecture
+│       │   └── reversed_ae.py  # Reversed Autoencoder
+│       ├── training/           # Training system
+│       │   ├── __init__.py
+│       │   ├── trainer.py      # Base trainer class
+│       │   ├── streaming_trainer.py # Cloud-native trainer
+│       │   ├── evaluator.py    # Model evaluation
+│       │   └── metrics.py      # Custom metrics (AUC, etc.)
+│       ├── utils/              # Utilities and helpers
+│       │   ├── __init__.py
+│       │   ├── config_manager.py     # Configuration management (existing)
+│       │   ├── checkpoint_manager.py # Model checkpointing
+│       │   └── logging_utils.py      # Logging and W&B integration
+│       └── visualization/      # Plotting and visualization
+│           ├── __init__.py
+│           ├── plots.py        # Standard plotting utilities
+│           ├── streaming_plots.py    # Real-time visualization
+│           └── medical_viz.py  # Medical imaging specific plots
+│
+├── configs/                    # Configuration files (existing)
+│   ├── project_config.yaml     # Main project configuration
+│   ├── kaggle.json            # Kaggle API credentials
+│   ├── wandb.json             # W&B API credentials  
+│   └── model_configs/         # Model-specific configurations
+│       ├── unet.yaml
+│       └── reversed_ae.yaml
+│
+├── scripts/                   # Executable scripts
 │   ├── __init__.py
-│   ├── streaming/
-│   │   ├── __init__.py
-│   │   ├── kaggle_client.py      # Kaggle API wrapper
-│   │   ├── stream_loader.py      # Streaming data loader
-│   │   └── memory_manager.py     # Smart caching system
-│   ├── data/
-│   │   ├── __init__.py
-│   │   ├── streaming_dataset.py  # PyTorch Dataset with streaming
-│   │   ├── transforms.py         # Image preprocessing
-│   │   └── batch_processor.py    # Memory-efficient batching
-│   ├── models/
-│   │   ├── __init__.py
-│   │   ├── unet.py              # U-Net architecture
-│   │   └── reversed_ae.py       # Reversed Autoencoder
-│   ├── training/
-│   │   ├── __init__.py
-│   │   ├── streaming_trainer.py # Cloud-native trainer
-│   │   └── cloud_evaluator.py   # Streaming evaluation
-│   ├── utils/
-│   │   ├── __init__.py
-│   │   ├── cloud_config.py      # Cloud configuration
-│   │   ├── checkpoint_manager.py # Cloud checkpointing
-│   │   └── logging_utils.py     # W&B integration
-│   └── visualization/
-│       ├── __init__.py
-│       └── streaming_plots.py   # Real-time visualization
-├── configs/
-│   ├── streaming_config.yaml    # Streaming configuration
-│   ├── model_configs/           # Model-specific configs
-│   └── cloud_configs/           # Cloud environment configs
-├── scripts/
-│   ├── train_streaming.py       # Main training script
-│   ├── evaluate_streaming.py    # Evaluation script
-│   └── setup_kaggle.py         # Kaggle API setup
-├── notebooks/
-│   ├── generated/              # Auto-generated notebooks
-│   └── templates/              # Notebook templates
-└── tests/
-    ├── test_streaming.py       # Streaming tests
-    └── test_integration.py     # End-to-end tests
+│   ├── train_streaming.py     # Main training script
+│   ├── evaluate_models.py     # Model evaluation script
+│   ├── setup_environment.py   # Environment setup
+│   └── generate_notebooks.py  # Auto-generate research notebooks
+│
+├── notebooks/                 # Research notebooks (existing)
+│   ├── research/              # Original research notebooks
+│   │   ├── Anomaly_Detection_Research.ipynb
+│   │   └── Anomaly_Detection_Research_Colab.ipynb
+│   ├── examples/             # Example notebooks
+│   │   ├── quick_start.ipynb
+│   │   └── advanced_usage.ipynb
+│   └── generated/            # Auto-generated notebooks
+│       └── streaming_demo.ipynb
+│
+├── tests/                    # Test suite
+│   ├── __init__.py
+│   ├── conftest.py          # Pytest configuration
+│   ├── unit/                # Unit tests
+│   │   ├── test_models.py
+│   │   ├── test_data.py
+│   │   └── test_utils.py
+│   ├── integration/         # Integration tests
+│   │   ├── test_streaming.py
+│   │   └── test_training.py
+│   └── fixtures/           # Test data and fixtures
+│       ├── sample_images/
+│       └── test_configs/
+│
+├── docs/                   # Project documentation (existing)
+│   ├── api/               # Auto-generated API docs
+│   ├── tutorials/         # User tutorials
+│   ├── DEVELOPMENT_TODO.md # Development roadmap
+│   ├── PROJECT_JOURNEY.md  # Research methodology
+│   └── ...               # Other existing docs
+│
+└── .github/              # GitHub workflows (optional)
+    └── workflows/
+        ├── test.yml      # CI/CD testing
+        ├── publish.yml   # Package publishing
+        └── docs.yml      # Documentation building
 ```
 
 ---
@@ -55,6 +109,7 @@ src/
 ## 🔄 Streaming Data Flow
 
 ### 1. **Kaggle API Integration**
+
 ```python
 class KaggleStreamClient:
     def __init__(self, dataset="nih-chest-xray/data"):
@@ -80,6 +135,7 @@ class KaggleStreamClient:
 ```
 
 ### 2. **Streaming Dataset Implementation**
+
 ```python
 class StreamingNIHDataset(Dataset):
     def __init__(self, kaggle_client, stage="images_001", transform=None):
@@ -122,6 +178,7 @@ class StreamingNIHDataset(Dataset):
 ```
 
 ### 3. **Memory-Efficient Training Loop**
+
 ```python
 class StreamingTrainer:
     def __init__(self, model, kaggle_client, config):
@@ -186,6 +243,7 @@ class StreamingTrainer:
 ## ☁️ Cloud-Native Features
 
 ### 1. **Google Colab Integration**
+
 ```python
 class ColabStreamingSetup:
     def __init__(self):
@@ -216,6 +274,7 @@ class ColabStreamingSetup:
 ```
 
 ### 2. **Real-Time Visualization**
+
 ```python
 class StreamingVisualizer:
     def __init__(self, wandb_project="imgae-dx-streaming"):
@@ -245,6 +304,7 @@ class StreamingVisualizer:
 ```
 
 ### 3. **Automatic Notebook Generation**
+
 ```python
 class StreamingNotebookGenerator:
     def generate_colab_notebook(self):
@@ -284,55 +344,112 @@ class StreamingNotebookGenerator:
 
 ---
 
-## 🚀 Usage Examples
+## 🚀 Poetry Usage Examples
 
-### Local Development
+### Development Workflow
+
 ```bash
-# Setup streaming environment
-python scripts/setup_kaggle.py --api-key-path kaggle.json
+# Install project with Poetry
+poetry install --with dev,cloud,viz
 
-# Train with streaming (Stage 1 only)
-python scripts/train_streaming.py --stage images_001 --epochs 5
+# Activate virtual environment
+poetry shell
 
-# Train progressive stages  
-python scripts/train_streaming.py --stages all --epochs-per-stage 10
+# CLI commands through Poetry
+poetry run imgae-train --config configs/project_config.yaml --stage images_001
+poetry run imgae-evaluate --model checkpoints/unet_best.pth
+poetry run imgae-config --validate-apis
+
+# Run tests
+poetry run pytest tests/ -v --cov
+
+# Code quality checks
+poetry run black src/ tests/
+poetry run isort src/ tests/
+poetry run mypy src/
+
+# Build and publish
+poetry build
+poetry publish --repository pypi
 ```
 
-### Google Colab
+### Google Colab with Poetry
+
 ```python
-# One-cell setup and training
-!pip install imgae-dx
+# Install from PyPI (after publishing)
+!pip install imgae-dx[cloud]
+
+# Or install from GitHub (development)
+!pip install git+https://github.com/user/imgae-dx.git
 
 from imgae_dx.streaming import ColabStreamingSetup, StreamingTrainer
+from imgae_dx.cli import setup_colab_environment
 
 # Auto-setup Colab environment
-setup = ColabStreamingSetup()
+setup_colab_environment()
 
-# Stream and train directly
-trainer = StreamingTrainer.from_colab_config()
+# Stream and train directly  
+trainer = StreamingTrainer.from_config("configs/project_config.yaml")
 results = trainer.train_progressive_stages()
 
-# Results automatically saved to Drive
-print(f"Training complete! Results in: {setup.checkpoint_dir}")
+print(f"Training complete! AUC scores: {results}")
+```
+
+### Package Import Structure
+
+```python
+# Clean imports with Poetry structure
+from imgae_dx.models import UNet, ReversedAutoencoder
+from imgae_dx.data import StreamingNIHDataset
+from imgae_dx.training import StreamingTrainer, Evaluator
+from imgae_dx.utils import ConfigManager
+from imgae_dx.visualization import plot_roc_curve, visualize_anomalies
+
+# Or use factory patterns
+from imgae_dx import create_model, create_trainer, load_config
+
+config = load_config("configs/project_config.yaml")
+model = create_model("unet", config.model)
+trainer = create_trainer("streaming", model, config.training)
 ```
 
 ---
 
-## 📊 Performance Benefits
+## 📊 Poetry Architecture Benefits
 
-### Memory Efficiency
-- **Traditional**: 6GB+ local storage required
-- **Streaming**: ~500MB peak memory usage
-- **Cleanup**: Automatic garbage collection per batch
+### Package Management
 
-### Speed Optimization  
-- **Parallel Streaming**: Download next batch while training current
-- **Smart Caching**: Frequently accessed images cached in memory
-- **GPU Utilization**: Continuous GPU utilization without I/O waits
+- **Dependency Resolution**: Automatic conflict resolution with lock file
+- **Virtual Environments**: Isolated environments per project
+- **Version Pinning**: Reproducible builds across environments
+- **Optional Dependencies**: Flexible installation (cloud, viz, performance groups)
+
+### Development Experience
+
+- **CLI Integration**: Built-in commands via `poetry run imgae-train`
+- **Testing Framework**: Integrated pytest with coverage
+- **Code Quality**: Black, isort, mypy integration
+- **Documentation**: Sphinx auto-generation from docstrings
+
+### Distribution & Publishing
+
+- **PyPI Ready**: One-command publishing to package indexes
+- **GitHub Integration**: Direct pip install from repository
+- **Semantic Versioning**: Automated version management
+- **Cross-Platform**: Works on Windows, macOS, Linux
 
 ### Cloud Integration
-- **Zero Setup**: Works out-of-box in Colab
-- **Auto-Sync**: Checkpoints automatically saved to Drive
-- **Reproducible**: Same streaming pipeline locally and in cloud
 
-This architecture eliminates local storage requirements while maintaining full functionality and performance!
+- **Colab Compatibility**: Easy pip install in notebooks
+- **Memory Efficiency**: ~500MB peak memory usage with streaming
+- **GPU Optimization**: Continuous GPU utilization
+- **Checkpoint Management**: Auto-sync with Google Drive
+
+### Professional Development
+
+- **CI/CD Ready**: GitHub Actions integration
+- **Type Safety**: Full mypy type checking
+- **Test Coverage**: Automated coverage reporting  
+- **Documentation**: Auto-generated API docs
+
+This modern Poetry architecture provides enterprise-grade package management while maintaining the streaming performance and cloud-native features!

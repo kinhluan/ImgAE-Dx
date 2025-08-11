@@ -3,11 +3,14 @@
 ## 🔑 Secure Configuration Management
 
 ### **Existing API Keys Integration**
+
 The project already has API keys configured in:
+
 - `configs/kaggle.json` - Kaggle API credentials
 - `configs/wandb.md` - Weights & Biases API key
 
 ### **Secure Configuration System**
+
 ```python
 # Centralized config management with existing keys
 from imgae_dx.utils.config_manager import get_config_manager
@@ -29,6 +32,7 @@ print(f"Stages: {config.dataset_stages}")
 ## 🏗️ Updated Architecture with Existing Keys
 
 ### **Project Structure**
+
 ```
 src/imgae_dx/
 ├── streaming/
@@ -47,6 +51,7 @@ src/imgae_dx/
 ```
 
 ### **Configuration Architecture**
+
 ```yaml
 # configs/project_config.yaml
 api_keys:
@@ -68,6 +73,7 @@ streaming:
 ## 🔄 Streaming Implementation with Existing Keys
 
 ### **1. Kaggle Authentication**
+
 ```python
 class KaggleStreamClient:
     def __init__(self, config_manager):
@@ -91,6 +97,7 @@ class KaggleStreamClient:
 ```
 
 ### **2. W&B Integration**  
+
 ```python
 class StreamingTrainer:
     def __init__(self, config_manager):
@@ -114,6 +121,7 @@ class StreamingTrainer:
 ```
 
 ### **3. Google Colab Auto-Setup**
+
 ```python
 class ColabStreamingSetup:
     def __init__(self):
@@ -165,6 +173,7 @@ class ColabStreamingSetup:
 ## ⚡ Usage Examples with Existing Keys
 
 ### **Local Development**
+
 ```python
 # Auto-loads existing keys from configs/
 from imgae_dx.utils.config_manager import get_config_manager
@@ -182,6 +191,7 @@ trainer.train_progressive_stages()
 ```
 
 ### **Google Colab (One Cell Setup)**
+
 ```python
 # Upload project files including configs/ to Colab
 # Then run:
@@ -200,6 +210,7 @@ results = trainer.train_progressive_stages()
 ```
 
 ### **Generated Research Notebook**
+
 ```python
 # Auto-generate notebook with existing keys embedded
 from imgae_dx.colab import NotebookGenerator
@@ -220,12 +231,14 @@ generator.save_notebook(notebook, "notebooks/generated/research_colab.ipynb")
 ## 🔒 Security Best Practices
 
 ### **Key Management**
+
 - ✅ Keys stored in separate files (existing `configs/kaggle.json`, `configs/wandb.md`)
 - ✅ `.gitignore` configured to exclude sensitive files
 - ✅ Environment variable fallbacks for cloud deployment
 - ✅ Validation and error handling for missing keys
 
 ### **Safe Configuration Loading**
+
 ```python
 # Automatic validation and error handling
 config_manager = get_config_manager()
@@ -243,6 +256,7 @@ except Exception as e:
 ```
 
 ### **Colab Security**
+
 ```python
 # Never embed keys in notebooks
 # Instead, upload configs/ folder to Colab and load securely
@@ -264,18 +278,21 @@ def secure_colab_setup():
 ## 🎯 Implementation Timeline (Updated)
 
 ### **Day 1 (4-5 hours): Core with Existing Keys**
+
 - ✅ Setup secure config management using existing keys
 - ✅ Implement Kaggle streaming client with authentication  
 - ✅ Basic streaming dataset implementation
 - ✅ Simple training loop with W&B integration
 
 ### **Day 2 (3-4 hours): Advanced Features**
+
 - ✅ Memory management and optimization
 - ✅ Progressive stage training
 - ✅ Cloud checkpointing system
 - ✅ Colab auto-setup helper
 
 ### **Day 3 (2-3 hours): Research Integration**
+
 - ✅ Generate research notebook with secure auth
 - ✅ End-to-end validation and testing
 - ✅ Model comparison and visualization

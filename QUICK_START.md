@@ -375,13 +375,13 @@ poetry run python scripts/validate_project.py
 
 ```
 checkpoints/
-├── UNet_best.pth                 # Best U-Net model
-├── ReversedAutoencoder_best.pth   # Best Reversed AE model  
-├── unet_learning_curves.png       # Training progress plots
+├── UNet_best.pth                   # Best U-Net model
+├── ReversedAutoencoder_best.pth    # Best Reversed AE model  
+├── unet_learning_curves.png        # Training progress plots
 └── reversed_ae_learning_curves.png
 
 logs/
-├── unet_20250111_120000.log      # Training logs
+├── unet_20250111_120000.log        # Training logs
 └── reversed_ae_20250111_130000.log
 ```
 

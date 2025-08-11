@@ -3,7 +3,7 @@
 ![Project Status](https://img.shields.io/badge/status-MVP%20Foundation%20Complete-brightgreen)
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 
-## Tổng quan Dự án
+## Tổng quan
 
 **ImgAE-Dx - Image Autoencoder Diagnosis Anomaly Research** là một dự án tập trung vào **phát hiện bất thường không giám sát** trong hình ảnh X-quang y tế. Mục tiêu là thực hiện một nghiên cứu so sánh chuyên sâu giữa kiến trúc **U-Net** tiêu chuẩn và một kiến trúc **Reversed Autoencoder (RA)** mới. Dự án nhằm đánh giá hiệu quả trong việc xác định các bất thường trên ảnh X-quang, sử dụng bộ dữ liệu NIH Chest X-ray (hoặc các datasets khác).
 

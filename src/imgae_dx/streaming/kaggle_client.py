@@ -14,7 +14,7 @@ from PIL import Image
 try:
     import kaggle
     KAGGLE_AVAILABLE = True
-except ImportError:
+except (ImportError, OSError):
     KAGGLE_AVAILABLE = False
 
 
@@ -68,13 +68,66 @@ class KaggleStreamClient:
         return self._file_list_cache
     
     def get_image_stages(self) -> List[str]:
-        """Get available image stage files (ZIP archives)."""
+        """Get available image stage directories."""
         files = self.list_dataset_files()
-        image_files = [
+        
+        # First try ZIP files (original expectation)
+        zip_files = [
             f for f in files 
             if f.startswith('images_') and f.endswith('.zip')
         ]
-        return sorted(image_files)
+        if zip_files:
+            return sorted(zip_files)
+        
+        # If no ZIP files, look for image directories
+        image_dirs = set()
+        for f in files:
+            if f.startswith('images_') and '/' in f and f.endswith('.png'):
+                # Extract directory name (e.g., 'images_001' from 'images_001/images/file.png')
+                stage_dir = f.split('/')[0]
+                image_dirs.add(stage_dir)
+        
+        return sorted(list(image_dirs))
+    
+    def get_stage_image_files(self, stage: str) -> List[str]:
+        """Get list of image files in a stage directory."""
+        files = self.list_dataset_files()
+        
+        # Get all image files in the stage directory
+        image_extensions = ['.png', '.jpg', '.jpeg']
+        stage_files = []
+        
+        for f in files:
+            if f.startswith(f'{stage}/'):
+                for ext in image_extensions:
+                    if f.lower().endswith(ext):
+                        stage_files.append(f)
+                        break
+        
+        return sorted(stage_files)
+    
+    def download_image_file(self, file_path: str) -> Image.Image:
+        """Download and return individual image file."""
+        try:
+            # Download file to temporary location
+            temp_filepath = Path(self.temp_dir) / Path(file_path).name
+            
+            self.api.dataset_download_file(
+                self.dataset_name,
+                file_path,
+                path=self.temp_dir
+            )
+            
+            # Load image
+            image = Image.open(temp_filepath).convert('L')  # Convert to grayscale
+            
+            # Clean up
+            temp_filepath.unlink()
+            
+            return image
+            
+        except Exception as e:
+            raise RuntimeError(f"Failed to download {file_path}: {e}")
     
     def stream_zip_content(self, filename: str) -> zipfile.ZipFile:
         """
@@ -94,8 +147,7 @@ class KaggleStreamClient:
             self.api.dataset_download_file(
                 self.dataset_name, 
                 filename,
-                path=self.temp_dir,
-                unzip=False
+                path=self.temp_dir
             )
             
             # Read the downloaded file
@@ -131,12 +183,24 @@ class KaggleStreamClient:
                 self.api.dataset_download_file(
                     self.dataset_name,
                     stage,
-                    path=self.temp_dir,
-                    unzip=False
+                    path=self.temp_dir
                 )
                 
-                # Load DataFrame
-                df = pd.read_csv(temp_path)
+                # Load DataFrame with different encodings
+                encodings_to_try = ['utf-8', 'latin1', 'iso-8859-1', 'cp1252']
+                df = None
+                
+                for encoding in encodings_to_try:
+                    try:
+                        df = pd.read_csv(temp_path, encoding=encoding)
+                        print(f"Successfully loaded metadata with {encoding} encoding")
+                        break
+                    except UnicodeDecodeError:
+                        continue
+                
+                if df is None:
+                    raise ValueError("Could not decode CSV file with any encoding")
+                
                 self._metadata_cache[stage] = df
                 
                 # Clean up

@@ -164,6 +164,10 @@ class ProjectConfig:
         # Create config objects from dictionaries
         config = cls()
         
+        # Load API keys from separate files (for security)
+        project_root = yaml_path.parent.parent  # Go up from configs/ to project root
+        config.api_keys = APIKeysConfig.from_files(project_root)
+        
         if 'streaming' in data:
             config.streaming = StreamingConfig(**data['streaming'])
         if 'model' in data:

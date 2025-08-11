@@ -126,7 +126,7 @@ class ReversedAutoencoder(BaseAutoencoder):
         super().__init__(input_channels, input_size, latent_dim, **kwargs)
         
         if encoder_features is None:
-            encoder_features = [64, 128, 256]
+            encoder_features = [64, 128, 256, 512]
         if decoder_features is None:
             decoder_features = [256, 128, 64]
         
@@ -139,8 +139,8 @@ class ReversedAutoencoder(BaseAutoencoder):
         self.encoder = self._build_encoder()
         
         # Calculate bottleneck spatial dimensions
-        # Encoder reduces spatial dims by 2^len(encoder_features)
-        self.reduction_factor = 2 ** len(encoder_features)
+        # Encoder reduces spatial dims by 2^(len(encoder_features)-1) due to stride=2 in all but first layer
+        self.reduction_factor = 2 ** (len(encoder_features) - 1)
         self.bottleneck_spatial = input_size // self.reduction_factor
         self.bottleneck_channels = encoder_features[-1]
         self.bottleneck_flat_size = (

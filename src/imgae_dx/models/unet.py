@@ -58,18 +58,23 @@ class Up(nn.Module):
             self.up = nn.ConvTranspose2d(in_channels, in_channels // 2, kernel_size=2, stride=2)
             self.conv = DoubleConv(in_channels, out_channels, dropout)
     
-    def forward(self, x1: torch.Tensor, x2: torch.Tensor) -> torch.Tensor:
+    def forward(self, x1: torch.Tensor, x2: Optional[torch.Tensor] = None) -> torch.Tensor:
         x1 = self.up(x1)
         
-        # Handle input size differences
-        diffY = x2.size()[2] - x1.size()[2]
-        diffX = x2.size()[3] - x1.size()[3]
-        
-        x1 = F.pad(x1, [diffX // 2, diffX - diffX // 2,
-                        diffY // 2, diffY - diffY // 2])
-        
-        # Concatenate skip connection
-        x = torch.cat([x2, x1], dim=1)
+        if x2 is not None:
+            # Handle input size differences
+            diffY = x2.size()[2] - x1.size()[2]
+            diffX = x2.size()[3] - x1.size()[3]
+            
+            x1 = F.pad(x1, [diffX // 2, diffX - diffX // 2,
+                            diffY // 2, diffY - diffY // 2])
+            
+            # Concatenate skip connection
+            x = torch.cat([x2, x1], dim=1)
+        else:
+            # No skip connection, just use upsampled input
+            x = x1
+            
         return self.conv(x)
 
 
@@ -134,6 +139,24 @@ class UNet(BaseAutoencoder):
         self.bottleneck_channels = bottleneck_features
         self.bottleneck_spatial = bottleneck_size
         
+        # Create decode-only layers (without skip connections)
+        self.decode_up1 = nn.Sequential(
+            nn.ConvTranspose2d(bottleneck_features, features[3], kernel_size=2, stride=2),
+            DoubleConv(features[3], features[3], dropout)
+        )
+        self.decode_up2 = nn.Sequential(
+            nn.ConvTranspose2d(features[3], features[2], kernel_size=2, stride=2),
+            DoubleConv(features[2], features[2], dropout)
+        )
+        self.decode_up3 = nn.Sequential(
+            nn.ConvTranspose2d(features[2], features[1], kernel_size=2, stride=2),
+            DoubleConv(features[1], features[1], dropout)
+        )
+        self.decode_up4 = nn.Sequential(
+            nn.ConvTranspose2d(features[1], features[0], kernel_size=2, stride=2),
+            DoubleConv(features[0], features[0], dropout)
+        )
+        
         # Initialize weights
         self._initialize_weights()
     
@@ -178,8 +201,13 @@ class UNet(BaseAutoencoder):
         
         # Note: Skip connections are not available in decode-only mode
         # This will produce lower quality reconstructions
-        x = F.interpolate(x5, scale_factor=16, mode='bilinear', align_corners=True)
-        x = self.outc(x)
+        
+        # Decode path (without skip connections)
+        x = self.decode_up1(x5)  # Up to next level
+        x = self.decode_up2(x)   # Up to next level 
+        x = self.decode_up3(x)   # Up to next level
+        x = self.decode_up4(x)   # Up to final level
+        x = self.outc(x)         # Final output
         
         return torch.sigmoid(x)
     

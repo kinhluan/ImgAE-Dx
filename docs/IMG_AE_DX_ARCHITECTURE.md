@@ -33,7 +33,7 @@ ImgAE-Dx nghiên cứu hai kiến trúc Autoencoder chính:
   * **Specialized "Pseudo-Healthy" Reconstruction Design (Thiết kế tái tạo "giả khỏe mạnh" chuyên biệt):** Đây là nguyên lý cốt lõi của RA cho phát hiện bất thường. Khi mô hình RA được huấn luyện chỉ trên dữ liệu khỏe mạnh, nó sẽ học cách ánh xạ mọi đầu vào (kể cả bất thường) về một biểu diễn không gian tiềm ẩn (latent space) của "sức khỏe". Khi giải mã từ biểu diễn này, nó sẽ cố gắng tái tạo lại hình ảnh như thể nó là một cấu trúc khỏe mạnh. Do đó, nếu có một bất thường trong ảnh đầu vào, RA sẽ không thể tái tạo chính xác bất thường đó mà thay vào đó sẽ tạo ra một phiên bản "giả khỏe mạnh" của vùng đó. Sự khác biệt giữa bất thường thực tế và phiên bản "giả khỏe mạnh" này sẽ tạo ra một lỗi tái tạo rất lớn, làm nổi bật vị trí bất thường.
 * **Vai trò trong ImgAE-Dx:** RA được thiết kế để tối đa hóa sự khác biệt giữa hình ảnh bất thường và bản tái tạo của nó, làm cho các bất thường trở nên rõ ràng hơn trên bản đồ lỗi tái tạo so với U-Net.
 
-### Giải thích các Giai đoạn trong Kiến trúc Autoencoder
+### 3. Giải thích các Giai đoạn trong Kiến trúc Autoencoder
 
 Để hiểu rõ hơn cách các kiến trúc Autoencoder hoạt động, chúng ta sẽ xem xét các giai đoạn chính mà dữ liệu đi qua:
 
@@ -110,6 +110,116 @@ flowchart TD
     G --> H[Đánh giá hiệu suất]
     G --> I[Trực quan hóa bản đồ lỗi và vùng bất thường]
 ```
+
+## Phân tích số lượng tham số: U-Net vs Reversed Autoencoder
+
+### **Kết quả thực tế từ implementation:**
+
+- **U-Net**: 54,986,305 parameters (~55M)
+* **Reversed AE**: 272,717,697 parameters (~273M)  
+* **Tỷ lệ**: RA có nhiều gấp **4.96x** tham số so với U-Net
+
+### **Phân tích chi tiết theo components:**
+
+| Component | U-Net | Reversed AE | Chênh lệch |
+|-----------|-------|-------------|------------|
+| **FC layers** | 33,587,712 | **269,617,664** | **8.0x** |
+| Encoder | 9,406,784 | 1,550,784 | 0.16x |
+| Decoder | 3,983,360 | 1,549,184 | 0.39x |
+| Output | 65 | 65 | 1.0x |
+
+### **Nguyên nhân chính: Bottleneck Size khác nhau**
+
+#### U-Net Bottleneck
+
+```
+Bottleneck spatial size: 8×8 pixels (reduction factor = 16)
+Bottleneck channels: 512
+Total bottleneck features: 512 × 8 × 8 = 32,768
+
+FC Architecture:
+- encoder_fc: 32,768 → 512 = 16,777,728 params
+- decoder_fc: 512 → 32,768 = 16,777,728 params
+- Total FC: ~33,555,456 params
+```
+
+#### Reversed AE Bottleneck
+
+```
+Bottleneck spatial size: 16×16 pixels (reduction factor = 8)  
+Bottleneck channels: 512
+Total bottleneck features: 512 × 16 × 16 = 131,072
+
+FC Architecture (Multi-layer):
+encoder_fc:
+  - Layer 1: 131,072 → 1,024 = 134,218,752 params
+  - Layer 2: 1,024 → 512 = 524,800 params
+
+decoder_fc:
+  - Layer 1: 512 → 1,024 = 524,800 params  
+  - Layer 2: 1,024 → 131,072 = 134,218,752 params
+
+Total FC: ~269,617,664 params
+```
+
+### **Lý do thiết kế khác nhau:**
+
+1. **Spatial Information Preservation**:
+   * **U-Net**: Dựa vào skip connections để preserve chi tiết → có thể dùng bottleneck nhỏ (8×8)
+   * **Reversed AE**: Không có skip connections → cần bottleneck lớn hơn (16×16) để giữ spatial information
+
+2. **FC Layer Complexity**:
+   * **U-Net**: Single-layer FC mapping đơn giản
+   * **Reversed AE**: Multi-layer FC với intermediate hidden layers (latent_dim × 2)
+
+3. **Design Philosophy**:
+   * **U-Net**: Hiệu quả tham số với skip connections hỗ trợ
+   * **Reversed AE**: Trade computational complexity lấy khả năng "pseudo-healthy mapping"
+
+### **Code Implementation Details:**
+
+```python
+# U-Net bottleneck calculation
+self.reduction_factor = 2 ** 4  # 4 downsampling layers = 16x reduction
+self.bottleneck_spatial = 128 // 16 = 8
+self.bottleneck_flat_size = 512 * 8 * 8 = 32,768
+
+# Simple single-layer FC
+self.encoder_fc = nn.Linear(self.bottleneck_flat_size, latent_dim)
+self.decoder_fc = nn.Linear(latent_dim, self.bottleneck_flat_size)
+```
+
+```python  
+# Reversed AE bottleneck calculation
+self.reduction_factor = 2 ** (len(encoder_features) - 1)  # 3 layers = 8x reduction
+self.bottleneck_spatial = 128 // 8 = 16  
+self.bottleneck_flat_size = 512 * 16 * 16 = 131,072
+
+# Multi-layer FC with intermediate layers
+self.encoder_fc = nn.Sequential(
+    nn.Linear(self.bottleneck_flat_size, latent_dim * 2),  # 131,072 → 1,024
+    nn.ReLU(inplace=True),
+    nn.Dropout(dropout),
+    nn.Linear(latent_dim * 2, latent_dim)                  # 1,024 → 512
+)
+```
+
+### **Kết luận về Parameter Efficiency:**
+
+**U-Net (Efficient Design)**:
+
+* Ít tham số nhưng hiệu quả cao nhờ skip connections
+* Bottleneck nhỏ (8×8) vẫn đủ vì có thông tin từ skip connections
+* Single-layer FC đơn giản và hiệu quả
+
+**Reversed AE (Specialized Design)**:
+
+* Nhiều tham số để bù đắp thiếu skip connections
+* Bottleneck lớn (16×16) để preserve spatial information
+* Multi-layer FC để học complex "pseudo-healthy mapping"
+* 5x nhiều tham số hơn nhưng specialized cho anomaly detection
+
+Sự khác biệt về số lượng tham số phản ánh **triết lý thiết kế khác nhau**: U-Net tối ưu hiệu quả với skip connections, trong khi Reversed AE đổi complexity lấy khả năng specialized anomaly detection thông qua "pseudo-healthy reconstruction".
 
 ## Điểm đặc biệt của ImgAE-Dx
 

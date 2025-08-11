@@ -1,104 +1,62 @@
 # ImgAE-Dx Project Configuration
 
-# API Keys Configuration (loaded from separate files)
-api_keys:
-  kaggle_config_path: "configs/kaggle.json"
-  wandb_key_path: "configs/wandb.md"
+# Project Metadata
+project_name: "ImgAE-Dx"
+version: "0.1.0"
+experiment_name: "unet_vs_reversed_ae"
+wandb_project: "imgae-dx"
+log_level: "INFO"
 
-# Dataset Configuration
-dataset:
-  name: "nih-chest-xray/data"
-  stages:
-    - "images_001.zip"  # 4,999 images (~500MB)
-    - "images_002.zip"  # 10,000 images (~1GB) 
-    - "images_003.zip"  # 10,000 images (~1GB)
-  
-  # Progressive loading strategy
-  progressive_config:
-    stage_1:
-      files: ["images_001.zip"]
-      normal_samples: 1000
-      abnormal_samples: 500
-      epochs: 10
-    stage_2:
-      files: ["images_001.zip", "images_002.zip"] 
-      normal_samples: 3000
-      abnormal_samples: 1500
-      epochs: 15
-    stage_3:
-      files: ["images_001.zip", "images_002.zip", "images_003.zip"]
-      normal_samples: 6000
-      abnormal_samples: 3000
-      epochs: 20
+# Data Configuration
+data:
+  num_normal_samples: 2000
+  num_abnormal_samples: 1000
+  train_val_split: 0.8
+  image_size: 128
+  normalize_mean: 0.485
+  normalize_std: 0.229
+  enable_augmentation: true
+  rotation_range: 15
+  horizontal_flip: true
+  brightness_range: [0.8, 1.2]
+  streaming_enabled: true
+  memory_limit_gb: 4
 
 # Model Configuration
-models:
-  unet:
-    name: "U-Net"
-    channels: [64, 128, 256, 512]
-    input_size: [128, 128]
-    skip_connections: true
-    
-  reversed_autoencoder:
-    name: "Reversed Autoencoder" 
-    encoder_channels: [16, 32, 64, 128]
-    bottleneck_size: [10, 10]
-    input_size: [128, 128]
-    skip_connections: false
+model:
+  input_channels: 1
+  input_size: 128
+  latent_dim: 512
+  unet_features: [64, 128, 256, 512]
+  unet_dropout: 0.1
+  rae_encoder_features: [64, 128, 256]
+  rae_decoder_features: [256, 128, 64]
+  rae_skip_connections: false
 
 # Training Configuration
 training:
+  epochs: 10
   batch_size: 32
   learning_rate: 1e-4
   optimizer: "adam"
+  weight_decay: 1e-5
+  scheduler: "cosine"
   loss_function: "mse"
-  device: "auto"  # auto-detect CUDA/MPS/CPU
-  
-  # Streaming-specific settings
-  streaming:
-    memory_limit_gb: 4
-    cache_frequently_accessed: true
-    cleanup_after_stage: true
-    parallel_download: false
+  save_every: 5
+  checkpoint_dir: "checkpoints"
+  patience: 10
+  min_delta: 1e-4
+  val_split: 0.2
+  val_frequency: 1
 
-# Evaluation Configuration  
-evaluation:
-  metrics:
-    - "auc_roc"
-    - "reconstruction_error" 
-    - "statistical_significance"
-  
-  visualization:
-    - "roc_curves"
-    - "error_heatmaps"
-    - "training_curves"
-    - "model_comparison"
-
-# Cloud Configuration
-cloud:
-  # Google Colab settings
-  colab:
-    mount_drive: true
-    checkpoint_dir: "/content/drive/MyDrive/ImgAE-Dx-Checkpoints"
-    temp_dir: "/content/temp"
-    
-  # Weights & Biases
-  wandb:
-    project_name: "imgae-dx-streaming"
-    entity: null  # Will use default
-    log_frequency: 100
-    save_artifacts: true
-
-# Security & Safety
-security:
-  # Never commit these paths to version control
-  sensitive_files:
-    - "configs/kaggle.json"
-    - "configs/wandb.md"
-    - "**/*.key"
-    - "**/*.secret"
-  
-  # Safe practices
-  auto_cleanup_temp: true
-  validate_api_keys: true
-  secure_logging: true
+# Streaming Configuration
+streaming:
+  memory_limit_gb: 4
+  batch_size: 32
+  num_workers: 0
+  prefetch_factor: 2
+  cache_size_mb: 512
+  dataset_name: "bachrr/covid-chest-xray"
+  dataset_stages: ["images"]
+  cleanup_frequency: 100
+  gc_threshold: 0.8

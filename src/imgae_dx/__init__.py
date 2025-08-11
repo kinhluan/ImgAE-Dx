@@ -10,7 +10,7 @@ __author__ = "Luan BHK"
 __email__ = "luanbhk@example.com"
 
 from .models import UNet, ReversedAutoencoder
-from .utils import ConfigManager, load_config
+from .utils import ConfigManager
 from .data import StreamingNIHDataset
 from .training import Trainer, Evaluator
 
@@ -34,7 +34,6 @@ def create_trainer(trainer_type: str, model, config: dict):
 
 def load_config(config_path: str):
     """Load configuration from YAML file."""
-    from .utils import ConfigManager
     return ConfigManager.load_project_config(config_path)
 
 __all__ = [

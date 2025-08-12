@@ -21,3 +21,25 @@ Dự án dựa trên nguyên lý của Autoencoder trong phát hiện bất thư
 2. Học cách tái tạo lại các hình ảnh bình thường một cách chính xác.
 3. Khi một hình ảnh bất thường được đưa vào, mô hình sẽ gặp khó khăn trong việc tái tạo chính xác phần bất thường đó, dẫn đến lỗi tái tạo cao tại vị trí bất thường.
 4. Bản đồ lỗi tái tạo được sử dụng để định vị và đánh giá mức độ bất thường.
+
+## 📚 Documentation
+
+Tài liệu dự án được tổ chức trong thư mục [`docs/`](docs/):
+
+### 🚀 Getting Started
+
+- **[Quick Start Guide](docs/guides/QUICK_START.md)** - Hướng dẫn nhanh để bắt đầu
+- **[Training Guide](docs/guides/TRAINING_GUIDE.md)** - Chi tiết cách train U-Net và Reversed AE
+
+### 🏗️ Technical Documentation  
+
+- **[Architecture Overview](docs/architecture/ARCHITECTURE.md)** - Kiến trúc tổng thể
+- **[Model Architecture](docs/architecture/IMG_AE_DX_ARCHITECTURE.md)** - Chi tiết models
+
+### 🔬 Research & Development
+
+- **[Research Journey](docs/research/PROJECT_JOURNEY.md)** - Quá trình nghiên cứu
+- **[Ideas & Concepts](docs/research/IDEA.md)** - Background và lý thuyết
+- **[Development Progress](docs/development/PROJECT_COMPLETION.md)** - Tiến độ phát triển
+
+📖 **[Xem tất cả documentation](docs/README.md)**

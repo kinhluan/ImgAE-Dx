@@ -148,15 +148,19 @@ dmypy.json
 # Mac
 .DS_Store
 
-# Project-specific
-# Model checkpoints and training artifacts
-checkpoints/
-logs/
-wandb/
+# Project-specific outputs and artifacts
+# All training outputs, models, logs, and cache
+outputs/
 
 # API Keys (real credentials)
 configs/kaggle.json
 configs/wandb.json
+
+# Legacy directories (now moved to outputs/)
+checkpoints/
+logs/
+wandb/
+hf_cache/
 
 # Temporary data directories
 data/
@@ -166,3 +170,10 @@ temp/
 # Kaggle data downloads
 *.zip
 *.tar.gz
+
+# Model files
+*.pth
+*.pt
+*.onnx
+*.pkl
+*.h5

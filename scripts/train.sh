@@ -24,8 +24,13 @@ EPOCHS=10
 BATCH_SIZE=32
 CONFIG_FILE="configs/project_config.yaml"
 RESUME=""
-OUTPUT_DIR="checkpoints"
+OUTPUT_DIR="outputs/checkpoints"
 WANDB_PROJECT="imgae-dx"
+DATA_SOURCE="kaggle"
+HF_DATASET="alkzar90/NIH-Chest-X-ray-dataset"
+HF_SPLIT="train"
+HF_TOKEN=""
+HF_STREAMING="true"
 
 # Help message
 show_help() {
@@ -45,12 +50,18 @@ OPTIONS:
     --batch-size NUM      Batch size (default: 32)
     --config FILE         Configuration file (default: configs/project_config.yaml)
     --resume PATH         Resume from checkpoint
-    --output-dir DIR      Output directory for checkpoints (default: checkpoints)
+    --output-dir DIR      Output directory for checkpoints (default: outputs/checkpoints)
     --wandb-project NAME  W&B project name (default: imgae-dx)
     --no-wandb           Disable W&B logging
+    --no-wandb-artifacts Disable W&B model artifact saving
     --gpu                Force GPU usage
     --cpu                Force CPU usage
     --memory-limit GB    Memory limit in GB (default: 4)
+    --data-source SOURCE Data source: kaggle, huggingface, hf (default: kaggle)
+    --hf-dataset NAME    HuggingFace dataset name (default: alkzar90/NIH-Chest-X-ray-dataset)
+    --hf-split SPLIT     HuggingFace dataset split (default: train)
+    --hf-token TOKEN     HuggingFace authentication token
+    --no-hf-streaming    Disable HuggingFace streaming mode
     --help, -h           Show this help message
 
 EXAMPLES:
@@ -61,13 +72,19 @@ EXAMPLES:
     $0 reversed_ae --samples 2000 --epochs 20 --gpu
 
     # Resume training from checkpoint
-    $0 unet --resume checkpoints/unet_epoch_10.pth
+    $0 unet --resume outputs/checkpoints/unet_epoch_10.pth
 
     # Train both models
     $0 both --samples 1000 --epochs 15
 
     # Custom config file
     $0 unet --config configs/custom.yaml
+    
+    # Train with HuggingFace dataset
+    $0 unet --data-source huggingface --samples 1000 --epochs 10
+    
+    # Train with custom HuggingFace dataset and token
+    $0 reversed_ae --data-source hf --hf-dataset custom/dataset --hf-token YOUR_TOKEN
 EOF
 }
 
@@ -115,6 +132,10 @@ parse_args() {
                 export WANDB_MODE=disabled
                 shift
                 ;;
+            --no-wandb-artifacts)
+                NO_WANDB_ARTIFACTS="true"
+                shift
+                ;;
             --gpu)
                 export CUDA_VISIBLE_DEVICES=0
                 shift
@@ -126,6 +147,26 @@ parse_args() {
             --memory-limit)
                 MEMORY_LIMIT="$2"
                 shift 2
+                ;;
+            --data-source)
+                DATA_SOURCE="$2"
+                shift 2
+                ;;
+            --hf-dataset)
+                HF_DATASET="$2"
+                shift 2
+                ;;
+            --hf-split)
+                HF_SPLIT="$2"
+                shift 2
+                ;;
+            --hf-token)
+                HF_TOKEN="$2"
+                shift 2
+                ;;
+            --no-hf-streaming)
+                HF_STREAMING="false"
+                shift
                 ;;
             --help|-h)
                 show_help
@@ -160,7 +201,7 @@ validate_inputs() {
 
     # Create output directory
     mkdir -p "$OUTPUT_DIR"
-    mkdir -p logs
+    mkdir -p outputs/logs
 }
 
 # Check system resources
@@ -201,6 +242,7 @@ train_model() {
     cmd="$cmd --epochs $EPOCHS"
     cmd="$cmd --batch-size $BATCH_SIZE"
     cmd="$cmd --output-dir $OUTPUT_DIR"
+    cmd="$cmd --data-source $DATA_SOURCE"
     
     if [ -n "$CONFIG_FILE" ]; then
         cmd="$cmd --config $CONFIG_FILE"
@@ -214,11 +256,29 @@ train_model() {
         cmd="$cmd --memory-limit $MEMORY_LIMIT"
     fi
     
+    if [ "$NO_WANDB_ARTIFACTS" == "true" ]; then
+        cmd="$cmd --no-wandb-artifacts"
+    fi
+    
+    # Add HuggingFace specific options
+    if [[ "$DATA_SOURCE" == "huggingface" || "$DATA_SOURCE" == "hf" ]]; then
+        cmd="$cmd --hf-dataset $HF_DATASET"
+        cmd="$cmd --hf-split $HF_SPLIT"
+        
+        if [ -n "$HF_TOKEN" ]; then
+            cmd="$cmd --hf-token $HF_TOKEN"
+        fi
+        
+        if [ "$HF_STREAMING" == "true" ]; then
+            cmd="$cmd --hf-streaming"
+        fi
+    fi
+    
     # Set W&B project
     export WANDB_PROJECT="$WANDB_PROJECT"
     
     # Create log file
-    local log_file="logs/${model_name}_$(date +%Y%m%d_%H%M%S).log"
+    local log_file="outputs/logs/${model_name}_$(date +%Y%m%d_%H%M%S).log"
     
     print_info "Command: $cmd"
     print_info "Log file: $log_file"
@@ -260,12 +320,22 @@ main() {
     echo ""
     print_info "Training configuration:"
     echo "  Model(s): $MODEL_TYPE"
+    echo "  Data source: $DATA_SOURCE"
     echo "  Samples: $SAMPLES"
     echo "  Epochs: $EPOCHS"
     echo "  Batch size: $BATCH_SIZE"
     echo "  Output dir: $OUTPUT_DIR"
     echo "  Config file: ${CONFIG_FILE:-"default"}"
     echo "  W&B project: $WANDB_PROJECT"
+    
+    if [[ "$DATA_SOURCE" == "huggingface" || "$DATA_SOURCE" == "hf" ]]; then
+        echo "  HF dataset: $HF_DATASET"
+        echo "  HF split: $HF_SPLIT"
+        echo "  HF streaming: $HF_STREAMING"
+        if [ -n "$HF_TOKEN" ]; then
+            echo "  HF token: ***provided***"
+        fi
+    fi
     echo ""
     
     # Start training

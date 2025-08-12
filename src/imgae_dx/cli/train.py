@@ -12,8 +12,8 @@ import torch
 from ..utils import ConfigManager
 from ..models import UNet, ReversedAutoencoder
 from ..training import Trainer
-from ..streaming import KaggleStreamClient, StreamingMemoryManager
-from ..data import create_streaming_dataloaders
+from ..streaming import KaggleStreamClient, StreamingMemoryManager, HuggingFaceStreamClient
+from ..data import create_streaming_dataloaders, create_hf_streaming_dataloaders
 
 
 def train_command():
@@ -44,7 +44,43 @@ def train_command():
         "--stage",
         type=str,
         default="images",
-        help="Dataset stage to use"
+        help="Dataset stage to use (for Kaggle)"
+    )
+    
+    # Data source arguments
+    parser.add_argument(
+        "--data-source",
+        type=str,
+        choices=["kaggle", "huggingface", "hf"],
+        default="kaggle",
+        help="Data source: kaggle or huggingface"
+    )
+    
+    parser.add_argument(
+        "--hf-dataset",
+        type=str,
+        default="alkzar90/NIH-Chest-X-ray-dataset",
+        help="HuggingFace dataset name"
+    )
+    
+    parser.add_argument(
+        "--hf-split",
+        type=str,
+        default="train",
+        help="HuggingFace dataset split"
+    )
+    
+    parser.add_argument(
+        "--hf-token",
+        type=str,
+        help="HuggingFace authentication token"
+    )
+    
+    parser.add_argument(
+        "--hf-streaming",
+        action="store_true",
+        default=True,
+        help="Enable HuggingFace streaming mode"
     )
     
     # Training arguments
@@ -86,7 +122,7 @@ def train_command():
     parser.add_argument(
         "--output-dir", 
         type=str, 
-        default="checkpoints",
+        default="outputs/checkpoints",
         help="Output directory for checkpoints"
     )
     
@@ -126,6 +162,12 @@ def train_command():
         "--no-wandb",
         action="store_true",
         help="Disable W&B logging"
+    )
+    
+    parser.add_argument(
+        "--no-wandb-artifacts",
+        action="store_true",
+        help="Disable W&B artifact saving"
     )
     
     # Validation
@@ -209,23 +251,58 @@ def main(args):
         enable_monitoring=True
     )
     
-    # Setup Kaggle client with dataset from config
-    try:
-        dataset_name = getattr(config.streaming, 'dataset_name', 'nih-chest-xray/data')
-        kaggle_client = KaggleStreamClient(dataset_name=dataset_name)
-        print("✅ Kaggle client initialized")
-        print(f"Dataset: {dataset_name}")
-    except Exception as e:
-        print(f"⚠️  Kaggle client error: {e}")
-        print("Using dummy data for testing...")
-        kaggle_client = None
+    # Setup data client based on source
+    data_source = args.data_source.lower()
+    if data_source in ['huggingface', 'hf']:
+        # Setup HuggingFace client
+        try:
+            hf_client = HuggingFaceStreamClient(
+                dataset_name=args.hf_dataset,
+                streaming=args.hf_streaming,
+                token=args.hf_token
+            )
+            print("✅ HuggingFace client initialized")
+            print(f"Dataset: {args.hf_dataset}")
+            kaggle_client = None
+        except Exception as e:
+            print(f"⚠️  HuggingFace client error: {e}")
+            print("Falling back to dummy data...")
+            hf_client = None
+            kaggle_client = None
+    else:
+        # Setup Kaggle client (default)
+        try:
+            dataset_name = getattr(config.streaming, 'dataset_name', 'nih-chest-xray/data')
+            kaggle_client = KaggleStreamClient(dataset_name=dataset_name)
+            print("✅ Kaggle client initialized")
+            print(f"Dataset: {dataset_name}")
+            hf_client = None
+        except Exception as e:
+            print(f"⚠️  Kaggle client error: {e}")
+            print("Using dummy data for testing...")
+            kaggle_client = None
+            hf_client = None
     
     # Create model
     model = create_model(args.model, config.model, device)
     print(f"✅ Model created: {model.count_parameters():,} parameters")
     
-    # Create data loaders
-    if kaggle_client:
+    # Create data loaders based on data source
+    if hf_client:
+        # HuggingFace data loaders
+        train_loader, val_loader, dataset_info = create_hf_streaming_dataloaders(
+            dataset_name=args.hf_dataset,
+            split=args.hf_split,
+            batch_size=args.batch_size,
+            train_ratio=1.0 - args.val_split,
+            max_samples=args.samples,
+            memory_manager=memory_manager,
+            image_size=args.image_size,
+            streaming=args.hf_streaming,
+            hf_token=args.hf_token
+        )
+    elif kaggle_client:
+        # Kaggle data loaders
         train_loader, val_loader, dataset_info = create_streaming_dataloaders(
             kaggle_client=kaggle_client,
             stage=args.stage,
@@ -260,7 +337,19 @@ def main(args):
         print(f"⚠️  Batch size adjusted from {old_batch_size} to {args.batch_size} (train samples: {train_samples})")
         
         # Recreate data loaders with adjusted batch size
-        if kaggle_client:
+        if hf_client:
+            train_loader, val_loader, dataset_info = create_hf_streaming_dataloaders(
+                dataset_name=args.hf_dataset,
+                split=args.hf_split,
+                batch_size=args.batch_size,
+                train_ratio=1.0 - args.val_split,
+                max_samples=args.samples,
+                memory_manager=memory_manager,
+                image_size=args.image_size,
+                streaming=args.hf_streaming,
+                hf_token=args.hf_token
+            )
+        elif kaggle_client:
             train_loader, val_loader, dataset_info = create_streaming_dataloaders(
                 kaggle_client=kaggle_client,
                 stage=args.stage,
@@ -279,6 +368,7 @@ def main(args):
     
     # Setup trainer
     wandb_project = None if args.no_wandb else args.wandb_project
+    save_artifacts = not args.no_wandb_artifacts
     
     # Clean config dict by removing device field that shouldn't be passed to Trainer
     clean_config = config.__dict__ if hasattr(config, '__dict__') else config
@@ -289,7 +379,8 @@ def main(args):
         model=model,
         config=clean_config,
         device=device,
-        wandb_project=wandb_project
+        wandb_project=wandb_project,
+        save_artifacts=save_artifacts
     )
     
     # Setup training components
@@ -351,6 +442,8 @@ def main(args):
         memory_manager.stop_monitoring()
         if kaggle_client:
             kaggle_client.cleanup_cache()
+        if hf_client:
+            hf_client.cleanup_cache()
 
 
 def create_model(model_type: str, model_config, device: str):

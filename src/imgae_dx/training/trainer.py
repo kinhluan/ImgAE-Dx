@@ -30,12 +30,14 @@ class Trainer:
         model: BaseAutoencoder,
         config: Optional[Dict[str, Any]] = None,
         device: Optional[str] = None,
-        wandb_project: Optional[str] = None
+        wandb_project: Optional[str] = None,
+        save_artifacts: bool = True
     ):
         self.model = model
         self.config = config or {}
         self.device = device or self._get_device()
         self.wandb_project = wandb_project
+        self.save_artifacts = save_artifacts
         
         # Move model to device
         self.model.to(self.device)
@@ -367,6 +369,10 @@ class Trainer:
         
         if is_best:
             print(f"New best model saved: {filepath}")
+            
+        # Save to W&B artifacts if enabled
+        if self.use_wandb and self.save_artifacts and hasattr(self, 'use_wandb'):
+            self._save_wandb_artifact(filepath, is_best, epoch, loss)
     
     def load_checkpoint(self, filepath: Path) -> Dict[str, Any]:
         """Load model checkpoint."""
@@ -450,6 +456,76 @@ class Trainer:
             'labels': binary_labels,
             'metrics': results
         }
+    
+    def _save_wandb_artifact(
+        self,
+        filepath: Path,
+        is_best: bool,
+        epoch: int,
+        loss: float
+    ):
+        """Save model checkpoint as W&B artifact."""
+        try:
+            import wandb
+            
+            if not wandb.run:
+                return
+                
+            # Create artifact name
+            model_name = self.model.model_name
+            artifact_name = f"{model_name}-checkpoint"
+            
+            # Add best suffix for best models
+            if is_best:
+                artifact_name = f"{model_name}-best-model"
+            
+            # Create artifact
+            artifact = wandb.Artifact(
+                name=artifact_name,
+                type="model",
+                description=f"{model_name} checkpoint at epoch {epoch} with loss {loss:.4f}",
+                metadata={
+                    "epoch": epoch,
+                    "loss": loss,
+                    "is_best": is_best,
+                    "model_type": model_name,
+                    "parameters": self.model.count_parameters(),
+                    "device": str(self.device),
+                    "architecture": self.model.get_model_info()
+                }
+            )
+            
+            # Add checkpoint file to artifact
+            artifact.add_file(str(filepath))
+            
+            # Add model summary if available
+            try:
+                summary_path = filepath.parent / f"{model_name}_summary.txt"
+                with open(summary_path, 'w') as f:
+                    f.write(f"Model: {model_name}\n")
+                    f.write(f"Parameters: {self.model.count_parameters():,}\n")
+                    f.write(f"Epoch: {epoch}\n")
+                    f.write(f"Loss: {loss:.6f}\n")
+                    f.write(f"Best model: {is_best}\n")
+                    f.write(f"Architecture: {self.model.get_model_info()}\n")
+                
+                artifact.add_file(str(summary_path))
+                
+                # Clean up summary file
+                if summary_path.exists():
+                    summary_path.unlink()
+                    
+            except Exception as e:
+                print(f"Warning: Could not create model summary: {e}")
+            
+            # Log artifact
+            wandb.log_artifact(artifact)
+            
+            status = "best " if is_best else ""
+            print(f"✅ {status}Model artifact saved to W&B: {artifact_name}")
+            
+        except Exception as e:
+            print(f"⚠️  Failed to save W&B artifact: {e}")
     
     def get_learning_curves(self) -> Dict[str, List[float]]:
         """Get training and validation learning curves."""

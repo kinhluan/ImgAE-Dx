@@ -150,7 +150,7 @@ dmypy.json
 
 # Project-specific outputs and artifacts
 # All training outputs, models, logs, and cache
-
+outputs/
 
 # API Keys (real credentials)
 configs/kaggle.json

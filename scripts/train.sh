@@ -31,6 +31,8 @@ HF_DATASET="alkzar90/NIH-Chest-X-ray-dataset"
 HF_SPLIT="train"
 HF_TOKEN=""
 HF_STREAMING="true"
+MIXED_PRECISION="true"
+T4_OPTIMIZATIONS="true"
 
 # Help message
 show_help() {
@@ -62,6 +64,10 @@ OPTIONS:
     --hf-split SPLIT     HuggingFace dataset split (default: train)
     --hf-token TOKEN     HuggingFace authentication token
     --no-hf-streaming    Disable HuggingFace streaming mode
+    --mixed-precision    Enable mixed precision training (T4 GPU optimization)
+    --no-mixed-precision Disable mixed precision training
+    --t4-optimizations   Enable T4 GPU specific optimizations
+    --no-t4-optimizations Disable T4 GPU optimizations
     --help, -h           Show this help message
 
 EXAMPLES:
@@ -168,6 +174,22 @@ parse_args() {
                 HF_STREAMING="false"
                 shift
                 ;;
+            --mixed-precision)
+                MIXED_PRECISION="true"
+                shift
+                ;;
+            --no-mixed-precision)
+                MIXED_PRECISION="false"
+                shift
+                ;;
+            --t4-optimizations)
+                T4_OPTIMIZATIONS="true"
+                shift
+                ;;
+            --no-t4-optimizations)
+                T4_OPTIMIZATIONS="false"
+                shift
+                ;;
             --help|-h)
                 show_help
                 exit 0
@@ -272,6 +294,17 @@ train_model() {
         if [ "$HF_STREAMING" == "true" ]; then
             cmd="$cmd --hf-streaming"
         fi
+    fi
+    
+    # Add T4 GPU optimizations
+    if [ "$MIXED_PRECISION" == "true" ]; then
+        cmd="$cmd --mixed-precision"
+    else
+        cmd="$cmd --no-mixed-precision"
+    fi
+    
+    if [ "$T4_OPTIMIZATIONS" == "true" ]; then
+        cmd="$cmd --optimize-for-t4"
     fi
     
     # Set W&B project

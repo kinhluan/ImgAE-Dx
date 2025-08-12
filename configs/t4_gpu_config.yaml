@@ -1,0 +1,218 @@
+# T4 GPU Optimized Configuration for ImgAE-Dx
+# Specialized for Tesla T4 (16GB VRAM) with HuggingFace streaming
+
+project_name: "imgae-dx-t4"
+
+# Device and Hardware Configuration
+device: "cuda"
+gpu_optimization:
+  enable_amp: true              # Mixed precision for 2x memory efficiency
+  memory_fraction: 0.85         # Use 85% of T4's 16GB (13.6GB)
+  max_split_size_mb: 1024       # CUDA memory fragmentation control
+  compile_model: true           # PyTorch 2.0 compilation
+  gradient_checkpointing: false # Disabled for T4 performance
+
+# T4-Optimized Training Configuration
+training:
+  # Performance settings
+  batch_size: 48                # T4 + AMP optimal
+  learning_rate: 1e-4
+  epochs: 20
+  memory_limit_gb: 14           # Conservative limit
+  gradient_clip_val: 1.0
+  
+  # T4-specific optimizations
+  use_mixed_precision: true
+  pin_memory: true
+  non_blocking: true
+  benchmark_cudnn: true
+  
+  # Checkpointing for Colab stability
+  save_frequency: 2             # Save every 2 epochs
+  early_stopping_patience: 5    # Shorter for Colab sessions
+  
+  # Optimizer settings
+  optimizer: "adamw"            # Better for mixed precision
+  scheduler: "cosine"
+  warmup_epochs: 2
+
+# Data Pipeline Configuration
+data:
+  # HuggingFace streaming settings
+  source: "huggingface"
+  streaming: true
+  
+  # T4-optimized data loading
+  batch_size: 48                # Matches training batch size
+  num_workers: 2                # T4 optimal (not too many)
+  prefetch_factor: 3            # Prefetch 3 batches
+  persistent_workers: true      # Keep workers alive
+  pin_memory: true             # Faster GPU transfers
+  
+  # Memory management
+  cache_size_mb: 512           # Reasonable cache for T4
+  cleanup_frequency: 50        # Cleanup every 50 batches
+  
+  # Image preprocessing
+  transforms:
+    resize: 128                 # T4-friendly size
+    normalize: true
+    augmentation: "light"       # Light augmentation for stability
+
+# Model Configuration
+model:
+  # Architecture settings
+  image_size: 128
+  input_channels: 1
+  base_channels: 64
+  
+  # T4 memory optimizations
+  dropout: 0.1
+  use_attention: false         # Disabled for memory efficiency
+  
+  # Model compilation (PyTorch 2.0)
+  compile: true
+  compile_mode: "default"      # "reduce-overhead" for T4
+
+# HuggingFace Dataset Configuration
+huggingface:
+  # Default datasets (T4-tested)
+  default_dataset: "keremberke/chest-xray-classification"
+  
+  # Alternative reliable datasets
+  datasets:
+    chest_xray_classification: "keremberke/chest-xray-classification"  # 5GB, fast
+    nih_chest_xray: "alkzar90/NIH-Chest-X-ray-dataset"              # 45GB, slower
+    pneumonia_detection: "Francesco/chest-xray-pneumonia-detection"   # 2GB, fastest
+  
+  # Streaming settings
+  streaming: true
+  cache_dir: "./hf_cache"
+  trust_remote_code: false
+  
+  # Authentication
+  use_auth_token: true          # Use HF_TOKEN if provided
+
+# Google Colab Integration
+colab:
+  # Drive backup settings
+  drive_backup: true
+  checkpoint_dir: "/content/drive/MyDrive/imgae_dx_checkpoints"
+  config_dir: "/content/drive/MyDrive/imgae_dx_configs"
+  log_dir: "/content/drive/MyDrive/imgae_dx_logs"
+  
+  # Session management
+  auto_save_frequency: 10       # Auto-save every 10 batches
+  recovery_enabled: true
+  
+  # Memory monitoring
+  memory_check_frequency: 5     # Check every 5 batches
+  memory_warning_threshold: 0.8 # Warn at 80%
+  memory_critical_threshold: 0.9 # Critical at 90%
+
+# Weights & Biases Configuration
+wandb:
+  project: "imgae-dx-t4-colab"
+  entity: null                  # Use default
+  
+  # Logging settings
+  log_frequency: 10             # Log every 10 steps
+  save_artifacts: true
+  watch_model: false            # Disabled for performance
+  
+  # T4-specific tags
+  tags:
+    - "t4-gpu"
+    - "colab"
+    - "mixed-precision"
+    - "huggingface-streaming"
+
+# Monitoring and Diagnostics
+monitoring:
+  # Performance tracking
+  track_memory: true
+  track_gpu_usage: true
+  log_system_stats: true
+  
+  # T4-specific monitoring
+  cuda_memory_stats: true
+  gpu_utilization_target: 85    # Target 85% GPU usage
+  
+  # Logging levels
+  log_level: "INFO"
+  verbose_training: true
+
+# T4 Performance Targets
+performance_targets:
+  # Training speed (samples/second)
+  target_speed:
+    with_amp: 850               # With mixed precision
+    without_amp: 420            # Without mixed precision
+  
+  # Memory usage
+  memory_efficiency:
+    target_usage: 0.75          # Target 75% memory usage
+    max_safe_usage: 0.85        # Max safe usage
+  
+  # Training time estimates (minutes)
+  estimated_time:
+    samples_1000_epochs_10: 15
+    samples_3000_epochs_20: 45
+    samples_5000_epochs_30: 90
+
+# Error Handling and Recovery
+error_handling:
+  # OOM recovery
+  oom_retry_enabled: true
+  oom_batch_size_reduction: 0.75  # Reduce to 75% on OOM
+  oom_max_retries: 3
+  
+  # Checkpoint recovery
+  auto_recovery: true
+  recovery_from_drive: true
+  
+  # Common T4 issues and solutions
+  troubleshooting:
+    out_of_memory:
+      - "Reduce batch_size from 48 to 32 or 24"
+      - "Enable mixed precision (should be enabled by default)"
+      - "Reduce memory_limit_gb from 14 to 12"
+      - "Use conservative mode: --conservative flag"
+    
+    slow_training:
+      - "Ensure mixed precision is enabled"
+      - "Check if cuDNN benchmark is enabled"
+      - "Verify T4 optimizations are active"
+      - "Consider reducing num_workers to 1"
+    
+    colab_disconnection:
+      - "Enable auto-save and drive backup"
+      - "Use shorter checkpoint intervals (every 1-2 epochs)"
+      - "Check recovery files in Google Drive"
+    
+    dataset_loading_issues:
+      - "Try alternative HuggingFace datasets"
+      - "Check HuggingFace authentication token"
+      - "Reduce cache_size_mb if disk space limited"
+
+# Environment Variables (set automatically)
+environment:
+  CUDA_LAUNCH_BLOCKING: "0"               # Non-blocking for performance
+  CUDNN_BENCHMARK: "1"                    # Enable cuDNN benchmarking
+  PYTORCH_CUDA_ALLOC_CONF: "max_split_size_mb:1024"
+  OMP_NUM_THREADS: "4"                    # Optimal for T4
+  TOKENIZERS_PARALLELISM: "false"         # Avoid tokenizer warnings
+
+# Advanced T4 Optimizations
+advanced_optimizations:
+  # Memory optimizations
+  empty_cache_frequency: 25               # Empty CUDA cache every 25 batches
+  gc_frequency: 50                        # Garbage collection frequency
+  
+  # Compute optimizations
+  use_deterministic_algorithms: false     # Disabled for performance
+  allow_tf32: true                       # Enable TF32 on Ampere (not T4, but safe)
+  
+  # Data loading optimizations
+  dataset_cache_strategy: "lru"          # Least Recently Used caching
+  prefetch_to_gpu: true                  # Prefetch data to GPU memory

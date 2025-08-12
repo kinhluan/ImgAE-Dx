@@ -13,6 +13,13 @@ from pathlib import Path
 import numpy as np
 from tqdm import tqdm
 
+# Mixed precision training support
+try:
+    from torch.cuda.amp import autocast, GradScaler
+    AMP_AVAILABLE = True
+except ImportError:
+    AMP_AVAILABLE = False
+
 from ..models.base import BaseAutoencoder
 from ..utils import ConfigManager
 from .metrics import AnomalyMetrics
@@ -31,13 +38,18 @@ class Trainer:
         config: Optional[Dict[str, Any]] = None,
         device: Optional[str] = None,
         wandb_project: Optional[str] = None,
-        save_artifacts: bool = True
+        save_artifacts: bool = True,
+        use_mixed_precision: bool = True
     ):
         self.model = model
         self.config = config or {}
         self.device = device or self._get_device()
         self.wandb_project = wandb_project
         self.save_artifacts = save_artifacts
+        
+        # T4 GPU optimizations
+        self.use_mixed_precision = use_mixed_precision and AMP_AVAILABLE and self.device == "cuda"
+        self.scaler = GradScaler() if self.use_mixed_precision else None
         
         # Move model to device
         self.model.to(self.device)
@@ -54,6 +66,9 @@ class Trainer:
         self.train_losses = []
         self.val_losses = []
         
+        # T4 GPU memory optimization
+        self._setup_t4_optimizations()
+        
         # Setup logging
         self._setup_logging()
         
@@ -65,6 +80,66 @@ class Trainer:
             return "mps"
         else:
             return "cpu"
+    
+    def _setup_t4_optimizations(self):
+        """Setup T4 GPU specific optimizations."""
+        if self.device == "cuda":
+            # Enable optimizations for T4 GPU
+            torch.backends.cudnn.benchmark = True
+            torch.backends.cudnn.enabled = True
+            
+            # Check GPU memory
+            gpu_memory_gb = torch.cuda.get_device_properties(0).total_memory / (1024**3)
+            
+            print(f"🔧 T4 GPU Optimizations:")
+            print(f"   Mixed Precision: {'✅ Enabled' if self.use_mixed_precision else '❌ Disabled'}")
+            print(f"   GPU Memory: {gpu_memory_gb:.1f} GB")
+            print(f"   cuDNN Benchmark: ✅ Enabled")
+            
+            # Set memory fraction for T4 (leave some memory for system)
+            if gpu_memory_gb <= 16:  # T4 GPU detection
+                torch.cuda.set_per_process_memory_fraction(0.85)  # Use 85% of T4's 16GB
+                print(f"   Memory Fraction: 85% (T4 optimized)")
+    
+    def get_optimal_batch_size(self, base_batch_size: int = 32) -> int:
+        """
+        Calculate optimal batch size for T4 GPU based on available memory.
+        
+        Args:
+            base_batch_size: Starting batch size
+            
+        Returns:
+            Optimized batch size for T4
+        """
+        if self.device != "cuda":
+            return base_batch_size
+            
+        try:
+            # Check available GPU memory
+            gpu_memory = torch.cuda.get_device_properties(0).total_memory
+            gpu_memory_gb = gpu_memory / (1024**3)
+            
+            # T4-specific batch size recommendations
+            if gpu_memory_gb <= 16:  # T4 GPU
+                # Conservative batch sizes for medical images (128x128)
+                if self.use_mixed_precision:
+                    # Mixed precision allows larger batches
+                    recommended_batch_size = min(64, base_batch_size * 2)
+                else:
+                    # Full precision - smaller batches
+                    recommended_batch_size = min(32, base_batch_size)
+            else:
+                # Other GPUs
+                recommended_batch_size = base_batch_size
+                
+            print(f"🎯 Batch Size Optimization:")
+            print(f"   Base: {base_batch_size} → Optimized: {recommended_batch_size}")
+            
+            return recommended_batch_size
+            
+        except Exception as e:
+            print(f"⚠️  Could not optimize batch size: {e}")
+            return base_batch_size
     
     def _setup_logging(self):
         """Setup W&B logging if available."""
@@ -144,7 +219,7 @@ class Trainer:
                 )
     
     def train_epoch(self, train_loader: DataLoader) -> Dict[str, float]:
-        """Train for one epoch."""
+        """Train for one epoch with mixed precision support."""
         self.model.train()
         epoch_loss = 0.0
         num_batches = len(train_loader)
@@ -152,25 +227,40 @@ class Trainer:
         progress_bar = tqdm(train_loader, desc=f"Epoch {self.current_epoch + 1}")
         
         for batch_idx, (images, _) in enumerate(progress_bar):
-            images = images.to(self.device)
+            images = images.to(self.device, non_blocking=True)  # T4 optimization
             
-            # Forward pass
             self.optimizer.zero_grad()
-            reconstruction = self.model(images)
-            loss = self.loss_fn(reconstruction, images)
             
-            # Backward pass
-            loss.backward()
-            self.optimizer.step()
+            if self.use_mixed_precision:
+                # Mixed precision training for T4 GPU
+                with autocast():
+                    reconstruction = self.model(images)
+                    loss = self.loss_fn(reconstruction, images)
+                
+                # Backward pass with gradient scaling
+                self.scaler.scale(loss).backward()
+                self.scaler.step(self.optimizer)
+                self.scaler.update()
+            else:
+                # Standard training
+                reconstruction = self.model(images)
+                loss = self.loss_fn(reconstruction, images)
+                loss.backward()
+                self.optimizer.step()
             
             # Update metrics
             batch_loss = loss.item()
             epoch_loss += batch_loss
             
+            # T4 memory management
+            if batch_idx % 10 == 0:
+                torch.cuda.empty_cache()  # Clear cache every 10 batches
+            
             # Update progress bar
             progress_bar.set_postfix({
                 'loss': f'{batch_loss:.4f}',
-                'avg_loss': f'{epoch_loss / (batch_idx + 1):.4f}'
+                'avg_loss': f'{epoch_loss / (batch_idx + 1):.4f}',
+                'mixed_prec': '✅' if self.use_mixed_precision else '❌'
             })
             
             # Log to W&B
@@ -178,24 +268,30 @@ class Trainer:
                 import wandb
                 wandb.log({
                     'batch_loss': batch_loss,
-                    'learning_rate': self.optimizer.param_groups[0]['lr']
+                    'learning_rate': self.optimizer.param_groups[0]['lr'],
+                    'mixed_precision': self.use_mixed_precision
                 })
         
         avg_loss = epoch_loss / num_batches
         return {'loss': avg_loss}
     
     def validate_epoch(self, val_loader: DataLoader) -> Dict[str, float]:
-        """Validate for one epoch."""
+        """Validate for one epoch with mixed precision support."""
         self.model.eval()
         epoch_loss = 0.0
         num_batches = len(val_loader)
         
         with torch.no_grad():
             for images, _ in tqdm(val_loader, desc="Validation"):
-                images = images.to(self.device)
+                images = images.to(self.device, non_blocking=True)
                 
-                reconstruction = self.model(images)
-                loss = self.loss_fn(reconstruction, images)
+                if self.use_mixed_precision:
+                    with autocast():
+                        reconstruction = self.model(images)
+                        loss = self.loss_fn(reconstruction, images)
+                else:
+                    reconstruction = self.model(images)
+                    loss = self.loss_fn(reconstruction, images)
                 
                 epoch_loss += loss.item()
         

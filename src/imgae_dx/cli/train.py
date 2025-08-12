@@ -133,13 +133,33 @@ def train_command():
         help="Path to checkpoint to resume from"
     )
     
-    # Device
+    # Device and T4 GPU optimizations
     parser.add_argument(
         "--device",
         type=str,
         choices=["auto", "cpu", "cuda", "mps"],
         default="auto",
         help="Device to use for training"
+    )
+    
+    parser.add_argument(
+        "--mixed-precision",
+        action="store_true",
+        default=True,
+        help="Enable mixed precision training (T4 GPU optimization)"
+    )
+    
+    parser.add_argument(
+        "--no-mixed-precision",
+        action="store_true",
+        help="Disable mixed precision training"
+    )
+    
+    parser.add_argument(
+        "--optimize-for-t4",
+        action="store_true",
+        default=True,
+        help="Enable T4 GPU specific optimizations"
     )
     
     # Memory management
@@ -366,9 +386,28 @@ def main(args):
                 num_samples=args.samples
             )
     
-    # Setup trainer
+    # Setup trainer with T4 optimizations
     wandb_project = None if args.no_wandb else args.wandb_project
     save_artifacts = not args.no_wandb_artifacts
+    
+    # Handle mixed precision settings
+    use_mixed_precision = args.mixed_precision and not args.no_mixed_precision
+    
+    # T4 GPU batch size optimization
+    optimized_batch_size = args.batch_size
+    if args.optimize_for_t4 and device == "cuda":
+        # Create temporary trainer to get optimal batch size
+        temp_trainer = Trainer(
+            model=model,
+            config={},
+            device=device,
+            use_mixed_precision=use_mixed_precision
+        )
+        optimized_batch_size = temp_trainer.get_optimal_batch_size(args.batch_size)
+        
+        if optimized_batch_size != args.batch_size:
+            print(f"🎯 T4 Optimization: Batch size adjusted to {optimized_batch_size}")
+            args.batch_size = optimized_batch_size
     
     # Clean config dict by removing device field that shouldn't be passed to Trainer
     clean_config = config.__dict__ if hasattr(config, '__dict__') else config
@@ -380,7 +419,8 @@ def main(args):
         config=clean_config,
         device=device,
         wandb_project=wandb_project,
-        save_artifacts=save_artifacts
+        save_artifacts=save_artifacts,
+        use_mixed_precision=use_mixed_precision
     )
     
     # Setup training components

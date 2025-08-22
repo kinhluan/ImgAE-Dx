@@ -7,6 +7,7 @@ Tài liệu dự án ImgAE-Dx được tổ chức theo các danh mục sau:
 ### 📖 `/guides` - Hướng dẫn sử dụng
 - **[TRAINING_GUIDE.md](guides/TRAINING_GUIDE.md)** - Hướng dẫn chi tiết train models U-Net và Reversed AE
 - **[QUICK_START.md](guides/QUICK_START.md)** - Hướng dẫn nhanh để bắt đầu với dự án
+- **[🇻🇳 GOOGLE_COLAB_VI.md](guides/GOOGLE_COLAB_VI.md)** - Hướng dẫn chạy trên Google Colab (Tiếng Việt)
 
 ### 🏗️ `/architecture` - Kiến trúc hệ thống  
 - **[ARCHITECTURE.md](architecture/ARCHITECTURE.md)** - Kiến trúc tổng thể của dự án
@@ -32,10 +33,11 @@ Tài liệu dự án ImgAE-Dx được tổ chức theo các danh mục sau:
 
 ## 🚀 Getting Started
 
-1. **Người mới bắt đầu**: Đọc [QUICK_START.md](guides/QUICK_START.md)
-2. **Training models**: Xem [TRAINING_GUIDE.md](guides/TRAINING_GUIDE.md)
-3. **Hiểu architecture**: Tham khảo [ARCHITECTURE.md](architecture/ARCHITECTURE.md)
-4. **Development**: Check [DEVELOPMENT_TODO.md](development/DEVELOPMENT_TODO.md)
+1. **🇻🇳 Chạy trên Google Colab**: Đọc [GOOGLE_COLAB_VI.md](guides/GOOGLE_COLAB_VI.md) (Tiếng Việt)
+2. **Người mới bắt đầu**: Đọc [QUICK_START.md](guides/QUICK_START.md)
+3. **Training models**: Xem [TRAINING_GUIDE.md](guides/TRAINING_GUIDE.md)
+4. **Hiểu architecture**: Tham khảo [ARCHITECTURE.md](architecture/ARCHITECTURE.md)
+5. **Development**: Check [DEVELOPMENT_TODO.md](development/DEVELOPMENT_TODO.md)
 
 ## 📚 Tài liệu chính
 

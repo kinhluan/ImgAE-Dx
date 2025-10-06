@@ -22,6 +22,16 @@ Dự án dựa trên nguyên lý của Autoencoder trong phát hiện bất thư
 3. Khi một hình ảnh bất thường được đưa vào, mô hình sẽ gặp khó khăn trong việc tái tạo chính xác phần bất thường đó, dẫn đến lỗi tái tạo cao tại vị trí bất thường.
 4. Bản đồ lỗi tái tạo được sử dụng để định vị và đánh giá mức độ bất thường.
 
+## 🚀 Chạy nhanh trên Google Colab
+
+**Muốn chạy thử ngay? Chỉ cần 3 bước:**
+
+1. **[📖 Đọc hướng dẫn chi tiết](docs/guides/GOOGLE_COLAB_VI.md)** - Hướng dẫn từng bước bằng tiếng Việt
+2. **[📓 Mở notebook](https://colab.research.google.com/github/kinhluan/ImgAE-Dx/blob/main/notebooks/T4_GPU_Training_Colab.ipynb)** - Click để mở trực tiếp trên Colab  
+3. **▶️ Chạy tất cả cell** - Ngồi chờ kết quả (45-90 phút)
+
+🎯 **Kết quả:** Hai mô hình AI phát hiện bất thường + phân tích so sánh chi tiết
+
 ## 📚 Documentation
 
 Tài liệu dự án được tổ chức trong thư mục [`docs/`](docs/):
@@ -29,6 +39,7 @@ Tài liệu dự án được tổ chức trong thư mục [`docs/`](docs/):
 ### 🚀 Getting Started
 
 - **[Quick Start Guide](docs/guides/QUICK_START.md)** - Hướng dẫn nhanh để bắt đầu
+- **[🇻🇳 Hướng dẫn Google Colab](docs/guides/GOOGLE_COLAB_VI.md)** - Cách chạy trên Google Colab (Tiếng Việt)
 - **[Training Guide](docs/guides/TRAINING_GUIDE.md)** - Chi tiết cách train U-Net và Reversed AE
 
 ### 🏗️ Technical Documentation  
